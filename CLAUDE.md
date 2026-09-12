@@ -19,8 +19,38 @@ LLM + MCP + A2UI. Caso: reestructuración de deuda de tarjeta de crédito.
 └── package.json
 ```
 
-Pendiente de lotes siguientes (no existen aún): rutas API (`app/api/stream`,
-`app/api/event`), `llm.ts`, cliente MCP, store/renderer A2UI en el front.
+```
+├── src/
+│   ├── mcp/mock.ts       # tools falsas (L2 real las reemplaza, misma firma)
+│   ├── lib/
+│   │   ├── llm.ts        # chat(messages, tools) — proveedor por LLM_PROVIDER
+│   │   └── a2ui.ts       # tipos del contrato docs/A2UI.md
+│   └── agent/
+│       ├── systemPrompt.ts
+│       ├── tools.ts      # declaraciones de tool-calling + dispatcher
+│       ├── session.ts    # memoria de conversación por surfaceId (en proceso)
+│       ├── stream.ts     # hub de suscriptores SSE
+│       └── router.ts     # directo (simular/seleccionar_plan) vs vía agente
+├── app/api/
+│   ├── stream/route.ts   # GET, SSE
+│   └── event/route.ts    # POST, cuerpo sección 5 de A2UI.md
+└── migrations/           # SQL sin aplicar, para cuando exista Tiger Data (L2)
+```
+
+Pendiente: front (store/resolvedor/renderer de los 7 componentes — Lote V
+punto 5), servidor MCP real y Tiger Data (L2).
+
+### Variables de entorno
+
+No hay `.env.example` en el repo (regla local bloquea escribir archivos
+`.env*`). Configurar a mano en local (`.env.local`, gitignored) y en el
+dashboard de DigitalOcean:
+
+```
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=<tu clave>
+GEMINI_MODEL=gemini-2.0-flash   # opcional, default ya es este
+```
 
 ## Comandos
 
@@ -50,3 +80,13 @@ Setup inicial (una vez, manual en el dashboard de DigitalOcean o con `doctl`):
 ## URL viva
 
 `<pendiente — se llena tras el primer deploy exitoso>`
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

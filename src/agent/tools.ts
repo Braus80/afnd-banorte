@@ -1,0 +1,83 @@
+import type { ToolDeclaration } from "@/src/lib/llm";
+import {
+  obtener_diagnostico,
+  simular_planes,
+  aplicar_plan,
+  deshacer_plan,
+  guardar_perfil,
+  obtenerCatalogoPlanes,
+  obtenerUsuarioId,
+  obtenerCuentaId,
+  type Perfil,
+} from "@/src/mcp/mock";
+
+export const TOOL_DECLARATIONS: ToolDeclaration[] = [
+  {
+    name: "obtener_diagnostico",
+    description: "Obtiene el diagnóstico financiero actual del usuario: saldo y tasa actual.",
+    parameters: { type: "object", properties: {} },
+  },
+  {
+    name: "simular_planes",
+    description: "Calcula pago mensual e interés total de cada plan del catálogo a un plazo dado.",
+    parameters: {
+      type: "object",
+      properties: {
+        plazoMeses: { type: "number", description: "Plazo en meses a simular para todos los planes." },
+      },
+      required: ["plazoMeses"],
+    },
+  },
+  {
+    name: "aplicar_plan",
+    description: "Aplica el plan elegido a la cuenta del usuario.",
+    parameters: {
+      type: "object",
+      properties: { plan_id: { type: "string", description: "id del plan del catálogo (plan-a, plan-b, plan-c)." } },
+      required: ["plan_id"],
+    },
+  },
+  {
+    name: "deshacer_plan",
+    description: "Revierte el último plan aplicado a la cuenta.",
+    parameters: { type: "object", properties: {} },
+  },
+  {
+    name: "guardar_perfil",
+    description: "Guarda el perfil de accesibilidad que eligió el usuario.",
+    parameters: {
+      type: "object",
+      properties: { perfil: { type: "string", enum: ["sencillo", "normal", "detallado"] } },
+      required: ["perfil"],
+    },
+  },
+];
+
+export async function ejecutarTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+  const usuarioId = obtenerUsuarioId();
+  const cuentaId = obtenerCuentaId();
+
+  switch (name) {
+    case "obtener_diagnostico":
+      return obtener_diagnostico();
+
+    case "simular_planes": {
+      const plazoMeses = Number(args.plazoMeses);
+      const { saldo } = await obtener_diagnostico();
+      const planes = obtenerCatalogoPlanes().map((p) => ({ id: p.id, plazoMeses }));
+      return simular_planes(saldo, planes);
+    }
+
+    case "aplicar_plan":
+      return aplicar_plan(usuarioId, cuentaId, String(args.plan_id));
+
+    case "deshacer_plan":
+      return deshacer_plan(usuarioId, cuentaId);
+
+    case "guardar_perfil":
+      return guardar_perfil(usuarioId, args.perfil as Perfil);
+
+    default:
+      throw new Error(`tool desconocida: ${name}`);
+  }
+}

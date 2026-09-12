@@ -55,3 +55,21 @@ Si falta tiempo: se corta cualquier otro atajo directo nuevo; esta distinción d
 `profile` es un campo de `createSurface` con tres valores cerrados (`sencillo`, `normal`, `detallado`); el renderer aplica escala, contraste y densidad — no hay componentes distintos por perfil.
 Razón: mismo catálogo de siete componentes para los tres perfiles evita triplicar lógica de agente y de renderer en 48 h; la diferencia es visual, no estructural.
 Si falta tiempo: se corta `SuggestionChips` después de cada pantalla (quedan solo en la bienvenida) y el modo `detallado` (quedan `sencillo` y `normal`).
+
+## D13 — Estado en memoria de un solo proceso
+
+Sesión (`src/agent/session.ts`) y hub de SSE (`src/agent/stream.ts`) viven en `Map` de memoria del proceso Node, no en Tiger Data.
+Razón: no bloquear el slice vertical en L2; funciona porque DigitalOcean App Platform corre una sola instancia persistente (no serverless por request) — D2.
+Si falta tiempo: no se migra a Tiger Data en este lote; se acepta que un restart/redeploy borra toda sesión activa.
+
+## D14 — Salida del LLM es un array JSON de mensajes A2UI
+
+El agente responde con un array JSON de uno o más mensajes A2UI en un mismo turno (p.ej. `createSurface` + `updateComponents` juntos al abrir sesión), no un mensaje por turno.
+Razón: A2UI.md no especifica el empaquetado de turno-a-mensajes y el flujo (sección 6, paso 1) necesita emitir dos mensajes en la misma respuesta.
+Si falta tiempo: no se cambia; es la única forma sin tocar el contrato de que createSurface y la bienvenida salgan juntos.
+
+## D15 — Gemini sin SDK
+
+`src/lib/llm.ts` llama la API de Gemini con `fetch` directo, sin `@google/generative-ai` ni otro SDK.
+Razón: una dependencia menos que pueda romper el build en 48 h (D1); la superficie usada (generateContent + function calling) es pequeña y estable.
+Si falta tiempo: se corta soporte a features avanzadas de Gemini (streaming de respuesta, multimodal); el tool-calling básico ya cubre el demo.

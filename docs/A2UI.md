@@ -254,7 +254,7 @@ Evento de un `SuggestionChips` tocado — `action` fijo `"mensaje_libre"`,
 Se copian tal cual al system prompt de L3:
 
 - Emite únicamente JSON de los tres tipos de arriba, sin texto alrededor.
-- Solo los seis `type` del catálogo. Nada inventado.
+- Solo los siete `type` del catálogo. Nada inventado.
 - Si te falta un dato para decidir, no lo supongas: emite un `SliderControl`
   que lo pida.
 - No emitas `updateComponents` si solo cambiaron números: usa
