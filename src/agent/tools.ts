@@ -10,7 +10,7 @@ import {
   obtenerUsuarioId,
   obtenerCuentaId,
   type Perfil,
-} from "@/src/mcp/mock";
+} from "@/src/mcp/tiger";
 
 export const TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
