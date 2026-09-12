@@ -1,0 +1,348 @@
+/* Tokens por perfil — LOTE-V.md sección 5, "Perfil y tokens". El renderer
+   solo pone data-profile; toda la traducción a valores vive aquí. */
+
+.a2ui-root {
+  --a2ui-escala: 1;
+  --a2ui-alto-boton: 44px;
+  /* Column (A2UI.md sección 3) solo apila vertical — no hay contenedor de
+     fila en el catálogo, así que este token queda definido para cuando
+     exista, pero hoy no tiene layout que lo consuma. */
+  --a2ui-cols-fila: 3;
+  --a2ui-contraste-texto: #1f2430;
+  --a2ui-borde: 1px solid transparent;
+  --a2ui-sombra: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #f3f4f6;
+  color: var(--a2ui-contraste-texto);
+  font-family: var(--a2ui-fuente-montserrat, "Montserrat", system-ui, sans-serif);
+  font-size: calc(1rem * var(--a2ui-escala));
+}
+
+.a2ui-root[data-profile="sencillo"] {
+  --a2ui-escala: 1.4;
+  --a2ui-alto-boton: 56px;
+  --a2ui-cols-fila: 1;
+  --a2ui-contraste-texto: #000000;
+  --a2ui-borde: 1px solid #1f2430;
+  --a2ui-sombra: none;
+}
+
+.a2ui-root[data-profile="detallado"] {
+  --a2ui-escala: 0.95;
+  --a2ui-alto-boton: 40px;
+  --a2ui-cols-fila: 4;
+}
+
+/* Layout */
+
+.a2ui-header {
+  background: #a10f2b;
+  color: #fff;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.a2ui-header-tarjeta {
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+.a2ui-aviso {
+  background: #fff3cd;
+  color: #664d03;
+  text-align: center;
+  padding: 0.4rem;
+  font-size: 0.85em;
+}
+
+.a2ui-main {
+  flex: 1;
+  padding: 1rem;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.a2ui-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Tarjetas */
+
+.a2ui-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--a2ui-sombra);
+  border: var(--a2ui-borde);
+  padding: 1rem 1.25rem;
+}
+
+/* StatCard */
+
+.a2ui-statcard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.a2ui-label {
+  font-size: 0.8em;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.a2ui-value {
+  font-size: 1.5em;
+  font-weight: 700;
+  text-align: right;
+}
+
+.a2ui-tone-warn .a2ui-value {
+  color: #b42318;
+}
+
+.a2ui-tone-good .a2ui-value {
+  color: #067647;
+}
+
+/* ComparisonTable */
+
+.a2ui-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.a2ui-comparison th {
+  text-align: left;
+  font-size: 0.8em;
+  color: #6b7280;
+  padding-bottom: 0.5rem;
+}
+
+.a2ui-comparison td {
+  padding: 0.6rem 0.25rem;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+
+.a2ui-comparison td:first-child {
+  text-align: left;
+}
+
+.a2ui-comparison tr {
+  cursor: pointer;
+}
+
+.a2ui-comparison tr.a2ui-selected {
+  background: #fdecea;
+}
+
+.a2ui-comparison tr.a2ui-atenuada {
+  opacity: 0.45;
+}
+
+.a2ui-badge {
+  display: inline-block;
+  margin-left: 0.4em;
+  background: #067647;
+  color: #fff;
+  font-size: 0.7em;
+  padding: 0.1em 0.5em;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* SliderControl */
+
+.a2ui-slider label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.a2ui-slider input[type="range"] {
+  width: 100%;
+  height: var(--a2ui-alto-boton);
+}
+
+/* ExplanationCard */
+
+.a2ui-explanation h3 {
+  margin: 0 0 0.4rem;
+}
+
+.a2ui-explanation p {
+  margin: 0 0 0.4rem;
+  line-height: 1.4;
+}
+
+.a2ui-explanation ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+/* ActionConfirmationModal */
+
+.a2ui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 10;
+}
+
+.a2ui-modal {
+  width: 100%;
+  max-width: 420px;
+}
+
+.a2ui-modal-resumen {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+}
+
+.a2ui-modal-resumen li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.a2ui-modal-acciones {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.a2ui-boton-primario,
+.a2ui-boton-secundario {
+  flex: 1;
+  min-height: var(--a2ui-alto-boton);
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.a2ui-boton-primario {
+  background: #374151;
+  color: #fff;
+  width: 100%;
+}
+
+.a2ui-boton-secundario {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ScheduleList */
+
+.a2ui-schedule ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.a2ui-schedule-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.a2ui-estado {
+  color: #6b7280;
+  font-size: 0.85em;
+}
+
+/* SuggestionChips */
+
+.a2ui-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.a2ui-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--a2ui-contraste-texto);
+  max-width: 5.5rem;
+}
+
+.a2ui-chip-icono {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--a2ui-sombra);
+  border: var(--a2ui-borde);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.a2ui-chip-label {
+  font-size: 0.75em;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Entrada de texto */
+
+.a2ui-textinput {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.a2ui-textinput input {
+  flex: 1;
+  min-height: var(--a2ui-alto-boton);
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 0 0.75rem;
+  font-size: 1em;
+}
+
+.a2ui-textinput button {
+  min-height: var(--a2ui-alto-boton);
+  padding: 0 1.1rem;
+  border-radius: 8px;
+  border: none;
+  background: #374151;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.a2ui-textinput button:disabled,
+.a2ui-textinput input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
