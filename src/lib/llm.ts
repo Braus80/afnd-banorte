@@ -38,6 +38,17 @@ export interface ChatResponse {
   toolCalls: ToolCall[];
 }
 
+// D19: 429 de cuota diaria/mensual no se reintenta (no se va a resolver en
+// segundos) — el router lo atrapa y muestra un mensaje amable en vez de
+// tronar. 429 de RPM sí se reintenta una vez, porque ese normalmente cede
+// en poco tiempo.
+export class CuotaAgotadaError extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "CuotaAgotadaError";
+  }
+}
+
 interface GeminiPart {
   text?: string;
   functionCall?: { name: string; args?: Record<string, unknown> };
@@ -85,6 +96,18 @@ function toGeminiTools(tools: ToolDeclaration[]) {
   return [{ functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })) }];
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function llamarGemini(url: string, body: unknown): Promise<Response> {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 async function geminiChat(
   messages: ChatMessage[],
   tools: ToolDeclaration[],
@@ -93,7 +116,10 @@ async function geminiChat(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY no configurada");
 
-  const model = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
+  // D19: gemini-flash-lite-latest es alias flotante (no versión fija) y
+  // gemini-3.1-flash-lite-image es variante de imagen — se descartan los
+  // dos. El más reciente versionado sin "preview"/"exp" es 3.5.
+  const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const body = {
@@ -102,11 +128,19 @@ async function geminiChat(
     ...(systemInstruction ? { systemInstruction: { parts: [{ text: systemInstruction }] } } : {}),
   };
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let res = await llamarGemini(url, body);
+
+  if (res.status === 429) {
+    const errText = await res.text();
+    const esCuota = /quota|daily/i.test(errText);
+    if (esCuota) {
+      throw new CuotaAgotadaError(`Gemini 429 (cuota): ${errText}`);
+    }
+    // RPM: probablemente cede pronto — un solo reintento.
+    console.warn("Gemini 429 (RPM), reintentando en 20s:", errText);
+    await sleep(20_000);
+    res = await llamarGemini(url, body);
+  }
 
   if (!res.ok) {
     const errText = await res.text();
@@ -123,6 +157,14 @@ async function geminiChat(
       args: p.functionCall.args ?? {},
       thoughtSignature: p.thoughtSignature,
     }));
+
+  // Probado en vivo: en tool-calls paralelas del mismo turno, solo una
+  // trae thoughtSignature — las demás vienen sin ella y el 400 vuelve a
+  // pedirla igual. Se propaga la firma del turno a las que falten.
+  const firmaDelTurno = toolCalls.find((t) => t.thoughtSignature)?.thoughtSignature;
+  if (firmaDelTurno) {
+    for (const t of toolCalls) t.thoughtSignature ??= firmaDelTurno;
+  }
 
   const text = parts.find((p) => typeof p.text === "string")?.text;
 

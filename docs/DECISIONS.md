@@ -89,3 +89,9 @@ Si falta tiempo: no se migra a Tailwind en este hackathon; si un lote futuro lo 
 ## D18 — El agente se llama Pixy
 
 El agente se llama "Pixy" (con y), no "Pixi" — renombrado en systemPrompt.ts, router.ts y copy visible del front.
+
+## D19 — Default de GEMINI_MODEL: gemini-3.5-flash-lite
+
+Default de \`GEMINI_MODEL\` es \`gemini-3.5-flash-lite\` (consultado en vivo vía GET /v1beta/models: el más reciente de la familia flash-lite sin "preview" ni "exp" — se descartan \`gemini-flash-lite-latest\` por ser alias flotante y \`gemini-3.1-flash-lite-image\` por ser variante de imagen).
+Razón: cuota diaria del nivel gratuito es ~1,000 RPD en Flash-Lite contra 20 RPD en los modelos preview/experimentales que se probaron antes — la demo no puede depender de una cuota que se agota en la primera ronda de pruebas.
+Si falta tiempo: no se reevalúa el modelo salvo que Google lo descontinúe; cambiar de modelo es una sola variable de entorno.

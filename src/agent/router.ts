@@ -2,7 +2,7 @@
 // directo (tool + updateDataModel, sin LLM); confirmar_plan/deshacer/
 // mensaje_libre/chips van vía agente.
 
-import { chat } from "@/src/lib/llm";
+import { chat, CuotaAgotadaError } from "@/src/lib/llm";
 import { TOOL_DECLARATIONS, ejecutarTool } from "@/src/agent/tools";
 import { SYSTEM_PROMPT } from "@/src/agent/systemPrompt";
 import { obtenerOCrearSesion, actualizarDataModel, type SessionState } from "@/src/agent/session";
@@ -12,6 +12,8 @@ import { esMensajeA2UIValido, type A2UIMessage, type EventoFront } from "@/src/l
 import type { Perfil } from "@/src/mcp/mock";
 
 const ACCIONES_DIRECTAS = new Set(["simular", "seleccionar_plan"]);
+const ACCIONES_VIA_AGENTE = new Set(["confirmar_plan", "deshacer", "mensaje_libre"]);
+const ACCIONES_CONOCIDAS = new Set([...ACCIONES_DIRECTAS, ...ACCIONES_VIA_AGENTE]);
 const MAX_TURNOS_TOOL_CALLING = 5;
 
 export function sesionParaSurface(surfaceId: string): SessionState {
@@ -29,6 +31,20 @@ export async function iniciarSesionSiEsNueva(sesion: SessionState): Promise<void
 
 export async function manejarEvento(evento: EventoFront): Promise<void> {
   const sesion = sesionParaSurface(evento.surfaceId);
+
+  if (!ACCIONES_CONOCIDAS.has(evento.action)) {
+    // Red debajo del fix de prompt que fija los 5 nombres de action: si el
+    // LLM igual inventó uno, no se enruta a ciegas — se le devuelve como
+    // corrección para que se autocorrija en el siguiente turno.
+    console.warn(`action desconocido del front, se devuelve al LLM: ${evento.action}`);
+    sesion.historial.push({
+      role: "user",
+      text: `action desconocido: ${evento.action}. Usa solo: simular, seleccionar_plan, confirmar_plan, deshacer, mensaje_libre.`,
+    });
+    await correrTurnoAgente(sesion);
+    return;
+  }
+
   if (ACCIONES_DIRECTAS.has(evento.action)) {
     await manejarDirecto(sesion, evento);
   } else {
@@ -84,7 +100,17 @@ function construirTextoDesdeEvento(sesion: SessionState, evento: EventoFront): s
 
 async function correrTurnoAgente(sesion: SessionState): Promise<void> {
   for (let i = 0; i < MAX_TURNOS_TOOL_CALLING; i++) {
-    const respuesta = await chat(sesion.historial, TOOL_DECLARATIONS, SYSTEM_PROMPT);
+    let respuesta;
+    try {
+      respuesta = await chat(sesion.historial, TOOL_DECLARATIONS, SYSTEM_PROMPT);
+    } catch (e) {
+      if (e instanceof CuotaAgotadaError) {
+        console.error("cuota de Gemini agotada, no se reintenta:", e.message);
+        emitirDescanso(sesion);
+        return;
+      }
+      throw e;
+    }
 
     if (respuesta.toolCalls.length > 0) {
       for (const llamada of respuesta.toolCalls) {
@@ -105,6 +131,21 @@ async function correrTurnoAgente(sesion: SessionState): Promise<void> {
     return;
   }
   throw new Error("el agente no resolvió dentro del máximo de turnos de tool-calling");
+}
+
+function emitirDescanso(sesion: SessionState): void {
+  emitir(sesion.surfaceId, {
+    version: "0.1",
+    surfaceId: sesion.surfaceId,
+    updateComponents: {
+      root: {
+        id: "card-cuota-agotada",
+        type: "ExplanationCard",
+        title: "Un momento",
+        body: "Pixy está descansando un momento, intenta en unos segundos.",
+      },
+    },
+  });
 }
 
 function procesarSalidaAgente(sesion: SessionState, textoJson: string): void {
