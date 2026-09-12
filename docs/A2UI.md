@@ -49,10 +49,25 @@ Abre la pantalla. Se manda una vez por sesión.
   "version": "0.1",
   "createSurface": {
     "surfaceId": "main",
-    "title": "Tu situación de crédito"
+    "title": "Tu situación de crédito",
+    "profile": "normal"
   }
 }
 ```
+
+`profile` (ver ADR D12). Tres valores cerrados, ninguno más sin ADR. No hay
+componentes distintos por perfil: el catálogo es el mismo, el renderer
+aplica tokens visuales sobre él.
+
+| valor | qué aplica el renderer |
+|---|---|
+| `sencillo` | escala tipográfica mayor, botones más altos, contraste alto, máximo de componentes visibles por pantalla (el resto se difiere a otra `updateComponents`) |
+| `normal` | tokens por defecto — es el valor si `profile` no viene |
+| `detallado` | escala tipográfica menor, densidad mayor, sin tope de componentes por pantalla |
+
+Se fija una vez al abrir la superficie (primera sesión) y persiste: toda
+`createSurface` posterior de ese usuario lo hereda desde `usuarios.perfil`.
+No cambia a mitad de sesión sin una `createSurface` nueva.
 
 ### updateComponents
 
@@ -97,7 +112,7 @@ manda.
 
 ## 4. Catálogo de componentes
 
-Seis. No se agregan sin ADR.
+Siete (ADR D12 agregó `SuggestionChips`). No se agregan más sin ADR.
 
 Todo componente tiene `id` (único en la superficie) y `type`. Cualquier prop
 puede ser un literal o una referencia `{"$": "/ruta/al/dato"}`.
@@ -164,6 +179,14 @@ Calendario de pagos resultante. Lista, no tabla: se lee en móvil.
 | `items` | `$ref` a `[{fecha, monto, estado}]` | |
 | `emptyLabel` | string | |
 
+### SuggestionChips
+Atajos de intención. Al tocar un chip se manda `prompt` como si el usuario lo
+hubiera escrito — siempre vía agente, nunca camino directo (ver sección 5).
+
+| prop | tipo | notas |
+|---|---|---|
+| `items` | `[{label, prompt}]` \| `$ref` | `label` se muestra, `prompt` es lo que se envía |
+
 ---
 
 ## 5. El evento de vuelta
@@ -186,9 +209,22 @@ es la que hace que el demo se sienta rápido:
 | Camino | Cuándo | Qué hace el backend |
 |---|---|---|
 | **Directo** | `simular`, `seleccionar_plan` | Llama la tool MCP y responde con `updateDataModel`. No pasa por el LLM. Latencia de milisegundos. |
-| **Vía agente** | `confirmar_plan`, `deshacer`, texto libre del usuario | Se inyecta como turno nuevo en la conversación. El LLM decide y puede emitir `updateComponents`. |
+| **Vía agente** | `confirmar_plan`, `deshacer`, texto libre del usuario, `SuggestionChips` | Se inyecta como turno nuevo en la conversación. El LLM decide y puede emitir `updateComponents`. |
 
 El front no sabe cuál es cuál. Solo manda el evento.
+
+Evento de un `SuggestionChips` tocado — `action` fijo `"mensaje_libre"`,
+`payload.texto` es el `prompt` del chip:
+
+```json
+{
+  "surfaceId": "main",
+  "componentId": "chips-onboarding",
+  "action": "mensaje_libre",
+  "payload": { "texto": "quiero el modo sencillo" },
+  "ts": 1757600000000
+}
+```
 
 ---
 

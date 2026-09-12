@@ -49,3 +49,9 @@ Si falta tiempo: se corta cualquier feature de historial/analytics; solo se pers
 Los eventos `simular` y `seleccionar_plan` llaman la tool MCP directo y responden con `updateDataModel`; no pasan por el LLM.
 Razón: latencia de milisegundos en la interacción más frecuente del demo (mover el slider) — pasar por el LLM ahí se siente lento y es innecesario porque no hay decisión que tomar.
 Si falta tiempo: se corta cualquier otro atajo directo nuevo; esta distinción de dos caminos no se toca porque es la que hace sentir rápido al demo.
+
+## D12 — Perfil de accesibilidad
+
+`profile` es un campo de `createSurface` con tres valores cerrados (`sencillo`, `normal`, `detallado`); el renderer aplica escala, contraste y densidad — no hay componentes distintos por perfil.
+Razón: mismo catálogo de siete componentes para los tres perfiles evita triplicar lógica de agente y de renderer en 48 h; la diferencia es visual, no estructural.
+Si falta tiempo: se corta `SuggestionChips` después de cada pantalla (quedan solo en la bienvenida) y el modo `detallado` (quedan `sencillo` y `normal`).
