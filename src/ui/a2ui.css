@@ -283,6 +283,86 @@
   color: var(--muted);
 }
 
+/* Bocina de lectura (D22) — affordance del shell dentro de ExplanationCard */
+
+.a2ui-explanation-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.a2ui-explanation-cabecera h3 {
+  flex: 1;
+  min-width: 0;
+}
+
+.a2ui-voz {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -4px -8px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--label);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.a2ui-voz:hover,
+.a2ui-voz:focus-visible {
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+}
+
+.a2ui-voz svg {
+  width: 18px;
+  height: 18px;
+}
+
+.a2ui-voz--cargando {
+  animation: a2ui-voz-pulso 1s ease-in-out infinite;
+}
+
+.a2ui-voz--reproduciendo {
+  color: var(--brand);
+}
+
+[data-profile="sencillo"] .a2ui-voz {
+  width: 44px;
+  height: 44px;
+  margin: -6px -10px 0 0;
+  color: var(--text);
+}
+
+[data-profile="sencillo"] .a2ui-voz svg {
+  width: 24px;
+  height: 24px;
+}
+
+@keyframes a2ui-voz-pulso {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .a2ui-voz--cargando {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
 /* ActionConfirmationModal */
 
 .a2ui-modal-overlay {

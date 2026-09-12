@@ -33,7 +33,8 @@ LLM + MCP + A2UI. Caso: reestructuración de deuda de tarjeta de crédito.
 │       └── router.ts     # directo (simular/seleccionar_plan) vs vía agente
 ├── app/api/
 │   ├── stream/route.ts   # GET, SSE
-│   └── event/route.ts    # POST, cuerpo sección 5 de A2UI.md
+│   ├── event/route.ts    # POST, cuerpo sección 5 de A2UI.md
+│   └── voz/route.ts      # POST {texto} → audio/mpeg (ElevenLabs TTS, D21)
 └── migrations/           # SQL sin aplicar, para cuando exista Tiger Data (L2)
 ```
 
@@ -50,6 +51,8 @@ dashboard de DigitalOcean:
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=<tu clave>
 GEMINI_MODEL=gemini-3.6-flash   # opcional, default ya es este
+ELEVENLABS_API_KEY=<tu clave>   # voz de Pixy (D21); sin ella /api/voz responde 503 y el botón no hace nada
+ELEVENLABS_VOICE_ID=<voice id>  # opcional, para una voz en español latino de la Voice Library
 ```
 
 ## Comandos
@@ -74,8 +77,8 @@ Setup inicial (una vez, manual en el dashboard de DigitalOcean o con `doctl`):
    `npm start`. Puerto: variable `$PORT` que inyecta DO (ya usado en el script
    `start`).
 4. Variables de entorno a configurar en el dashboard (no van al repo):
-   `LLM_PROVIDER`, `GEMINI_API_KEY`, `TIGER_DATA_URL` (se agregan cuando
-   existan los lotes que los usan).
+   `LLM_PROVIDER`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `TIGER_DATA_URL`
+   (se agregan cuando existan los lotes que los usan).
 
 ## URL viva
 

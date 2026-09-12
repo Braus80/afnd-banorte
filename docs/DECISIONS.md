@@ -107,3 +107,15 @@ Si falta tiempo: no se reevalúa el modelo salvo que Google lo descontinúe; cam
 El hub de `src/agent/stream.ts` cierra en el servidor la conexión SSE anterior de un `surfaceId` cuando llega una nueva, en vez de dejarlas coexistir.
 Razón: bug real en vivo — recargas repetidas del navegador dejaban `EventSource` huérfanos sin cerrar; Chrome limita a 6 conexiones concurrentes por origen en HTTP/1.1 (`next start` no sirve HTTP/2), agotando el pool y colgando conexiones nuevas para siempre aunque el servidor respondiera bien (confirmado con curl).
 Si falta tiempo: no se resuelve con HTTP/2 (requiere TLS/servidor custom); esta es la solución mínima consistente con "una sesión = una surfaceId" de A2UI.md sección 2.
+
+## D21 — Voz de Pixy con ElevenLabs Text to Speech, bajo demanda
+
+`POST /api/voz` recibe `{ texto }` y devuelve `audio/mpeg` generado con la API de Text to Speech de ElevenLabs (`eleven_flash_v2_5`, `language_code: "es"`), con `ELEVENLABS_API_KEY` solo en el servidor, timeout de 8 s y caché en memoria por texto. Cualquier fallo (key ausente, error del proveedor, timeout) responde `503` sin cuerpo. No se usa ElevenAgents: el agente sigue siendo Gemini (D3); ElevenLabs solo convierte texto en audio.
+Razón: la lectura en voz alta es accesibilidad para el perfil `sencillo` (D12) y no puede costar latencia al render ni créditos por pantalla — por eso solo se genera cuando el usuario toca la bocina, nunca automático, y se cachea por texto. `eleven_flash_v2_5` es el único modelo vigente que acepta `language_code` (multilingual_v2 lo rechaza; turbo_v2_5 está deprecado) y el de menor latencia. La voz se elige por `ELEVENLABS_VOICE_ID` (default: premade multilingüe) para poder poner un acento latino de la Voice Library sin tocar código.
+Si falta tiempo: se corta la voz completa quitando el botón; el resto del demo no depende de ella (503 = botón vuelve a inactivo y nada más cambia).
+
+## D22 — El estado de voz vive fuera del árbol A2UI
+
+La bocina de `ExplanationCard` y el estado `inactivo | cargando | reproduciendo` viven en `src/ui/voz.ts`, un módulo del shell con `useSyncExternalStore`; `PixyBubble` deriva "hablando" de ahí. No se agregan props al contrato (`docs/A2UI.md` sección 4 queda igual), no se toca el `store` del data model, el `Renderer` ni el router de eventos.
+Razón: leer en voz alta es una capacidad del front, no una intención del agente — el JSON del LLM no debe saber que existe. Mantenerlo fuera del store evita que un `updateDataModel` o un `reset()` de `createSurface` pisen el estado de audio, y evita reabrir el contrato por una feature experimental.
+Si falta tiempo: no se lleva la voz a otros componentes (StatCard, ScheduleList); solo `ExplanationCard`, que es donde vive el texto que vale la pena escuchar.
