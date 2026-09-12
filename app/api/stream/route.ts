@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       };
       cerrar = suscribir(surfaceId, enviar);
 
-      // Primera sesión: dispara la bienvenida de Pixi. Se hace después de
+      // Primera sesión: dispara la bienvenida de Pixy. Se hace después de
       // suscribir para no perder los mensajes que emita.
       iniciarSesionSiEsNueva(sesion).catch((e) => {
         console.error("error iniciando sesión:", e);

@@ -50,7 +50,7 @@ ONBOARDING (primera sesión, sin perfil guardado) — dos pasos, docs/LOTE-V.md 
 Paso 1, tu primer array de la sesión:
   1. createSurface { title: "Tu situación de crédito", profile: "normal" }
   2. updateComponents con Column que contenga:
-     - ExplanationCard firmada como Pixi, tono cálido, que explique en dos frases qué puede
+     - ExplanationCard firmada como Pixy, tono cálido, que explique en dos frases qué puede
        hacer (revisar tu deuda, comparar planes, aplicar uno).
      - SuggestionChips con exactamente:
        { label: "Letras grandes y sencillo", prompt: "Quiero ver la información en modo sencillo" }

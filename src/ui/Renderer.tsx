@@ -5,6 +5,7 @@ import { store } from "./store";
 import { sendEvent } from "./sendEvent";
 import { COMPONENTS } from "./components";
 import { TextInput } from "./TextInput";
+import { PixyBubble } from "./PixyBubble";
 import type { A2UIMessage, ComponentNode, Profile } from "@/src/lib/a2ui";
 import type { OnEvento } from "./types";
 
@@ -98,6 +99,8 @@ export function AppRenderer() {
       {!conectado && <div className="a2ui-aviso">Reconectando…</div>}
 
       <main className="a2ui-main">{root ? <NodoRenderer node={root} onEvento={onEvento} /> : <p>Cargando…</p>}</main>
+
+      <PixyBubble estado={pensando ? "pensando" : "reposo"} />
 
       <TextInput disabled={pensando} onEnviar={(texto) => onEvento("input-texto", "mensaje_libre", { texto })} />
     </div>

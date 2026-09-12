@@ -22,7 +22,7 @@ export function TextInput({ disabled, onEnviar }: Props) {
       <input
         type="text"
         value={texto}
-        placeholder={disabled ? "Pixi está pensando…" : "Escribe tu pregunta…"}
+        placeholder={disabled ? "Pixy está pensando…" : "Escribe tu pregunta…"}
         disabled={disabled}
         onChange={(e) => setTexto(e.target.value)}
         onKeyDown={(e) => {

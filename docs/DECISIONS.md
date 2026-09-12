@@ -85,3 +85,7 @@ Si falta tiempo: no se toca; L2 real debe respetar esta misma forma de salida al
 `src/ui/a2ui.css` implementa la tabla de tokens de LOTE-V.md sección 5 con variables CSS y selectores `[data-profile]`, sin instalar Tailwind.
 Razón: el efecto visual es idéntico con una décima parte del setup; D1 ya prioriza minimizar dependencias, y el catálogo de tokens es fijo y chico (5 filas × 3 perfiles).
 Si falta tiempo: no se migra a Tailwind en este hackathon; si un lote futuro lo necesita para algo más grande, es su propio ADR.
+
+## D18 — El agente se llama Pixy
+
+El agente se llama "Pixy" (con y), no "Pixi" — renombrado en systemPrompt.ts, router.ts y copy visible del front.

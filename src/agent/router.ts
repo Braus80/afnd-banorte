@@ -22,7 +22,7 @@ export async function iniciarSesionSiEsNueva(sesion: SessionState): Promise<void
   if (sesion.perfil !== null || sesion.historial.length > 0) return;
   sesion.historial.push({
     role: "user",
-    text: "Inicia la sesión: preséntate como Pixi con una bienvenida cálida y ofrece elegir el perfil de accesibilidad.",
+    text: "Inicia la sesión: preséntate como Pixy con una bienvenida cálida y ofrece elegir el perfil de accesibilidad.",
   });
   await correrTurnoAgente(sesion);
 }
