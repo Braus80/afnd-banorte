@@ -26,9 +26,10 @@ export interface PlanCatalogo {
 export interface PlanSimulado {
   id: string;
   tasa: number;
-  plazoMeses: number;
-  pagoMensual: number;
-  interesTotal: number;
+  plazo_meses: number;
+  pago_mensual: number;
+  interes_total: number;
+  recomendado: boolean;
 }
 
 export type Perfil = "sencillo" | "normal" | "detallado";
@@ -71,14 +72,18 @@ export async function simular_planes(
   saldo: number,
   planes: { id: string; plazoMeses: number }[]
 ): Promise<PlanSimulado[]> {
-  return planes.map(({ id, plazoMeses }) => {
+  const calculados = planes.map(({ id, plazoMeses }) => {
     const catalogo = CATALOGO_PLANES.find((p) => p.id === id);
     if (!catalogo) throw new Error(`plan desconocido: ${id}`);
-    const pagoMensual = redondear(cuotaMensual(saldo, catalogo.tasa, plazoMeses));
-    const interesTotal = redondear(pagoMensual * plazoMeses - saldo);
+    const pago_mensual = redondear(cuotaMensual(saldo, catalogo.tasa, plazoMeses));
+    const interes_total = redondear(pago_mensual * plazoMeses - saldo);
     ultimoPlazoPorCuenta.set(CUENTA_ID, plazoMeses);
-    return { id, tasa: catalogo.tasa, plazoMeses, pagoMensual, interesTotal };
+    return { id, tasa: catalogo.tasa, plazo_meses: plazoMeses, pago_mensual, interes_total };
   });
+  // LOTE-V.md sección 5, ComparisonTable: badge "Recomendado" en la fila
+  // que trae recomendado: true. Convención: menor interés total.
+  const minInteres = Math.min(...calculados.map((p) => p.interes_total));
+  return calculados.map((p) => ({ ...p, recomendado: p.interes_total === minInteres }));
 }
 
 export async function aplicar_plan(

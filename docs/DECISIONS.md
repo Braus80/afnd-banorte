@@ -73,3 +73,9 @@ Si falta tiempo: no se cambia; es la única forma sin tocar el contrato de que c
 `src/lib/llm.ts` llama la API de Gemini con `fetch` directo, sin `@google/generative-ai` ni otro SDK.
 Razón: una dependencia menos que pueda romper el build en 48 h (D1); la superficie usada (generateContent + function calling) es pequeña y estable.
 Si falta tiempo: se corta soporte a features avanzadas de Gemini (streaming de respuesta, multimodal); el tool-calling básico ya cubre el demo.
+
+## D16 — Nombres de campo de `simular_planes` y `recomendado`
+
+Cada plan de `simular_planes` trae `{ id, tasa, plazo_meses, pago_mensual, interes_total, recomendado }` en snake_case; `recomendado: true` se calcula en la tool (menor `interes_total`), no en el front ni en el agente.
+Razón: docs/LOTE-V.md sección 5 exige esos nombres literales para el badge "Recomendado" y la atenuación de filas contra `/presupuesto`; calcularlo una sola vez en la tool evita que agente y front diverjan en el criterio.
+Si falta tiempo: no se toca; L2 real debe respetar esta misma forma de salida al reemplazar el mock.

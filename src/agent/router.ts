@@ -38,7 +38,7 @@ export async function manejarEvento(evento: EventoFront): Promise<void> {
 
 async function manejarDirecto(sesion: SessionState, evento: EventoFront): Promise<void> {
   if (evento.action === "simular") {
-    const plazoMeses = Number(evento.payload.plazoMeses ?? evento.payload.plazo);
+    const plazoMeses = Number(evento.payload.valor ?? evento.payload.plazoMeses ?? evento.payload.plazo);
     const { saldo } = await obtener_diagnostico();
     const planes = obtenerCatalogoPlanes().map((p) => ({ id: p.id, plazoMeses }));
     const resultado = await simular_planes(saldo, planes);
@@ -71,7 +71,10 @@ function construirTextoDesdeEvento(sesion: SessionState, evento: EventoFront): s
     return `${String(evento.payload.texto ?? "")}\n\n(${estado})`;
   }
   if (evento.action === "confirmar_plan") {
-    return `El usuario confirmó aplicar el plan seleccionado. ${estado} Acción: confirmar_plan.`;
+    const confirmado = Boolean(evento.payload.confirmado);
+    return confirmado
+      ? `El usuario confirmó aplicar el plan seleccionado. ${estado} Acción: confirmar_plan, payload.confirmado=true.`
+      : `El usuario canceló el modal de confirmación, no aplicar nada. ${estado} Acción: confirmar_plan, payload.confirmado=false.`;
   }
   if (evento.action === "deshacer") {
     return `El usuario pidió deshacer el último plan aplicado. ${estado} Acción: deshacer.`;
