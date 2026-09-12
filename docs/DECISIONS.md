@@ -101,3 +101,9 @@ El agente se llama "Pixy" (con y), no "Pixi" — renombrado en systemPrompt.ts, 
 Default de \`GEMINI_MODEL\` es \`gemini-3.5-flash-lite\` (consultado en vivo vía GET /v1beta/models: el más reciente de la familia flash-lite sin "preview" ni "exp" — se descartan \`gemini-flash-lite-latest\` por ser alias flotante y \`gemini-3.1-flash-lite-image\` por ser variante de imagen).
 Razón: cuota diaria del nivel gratuito es ~1,000 RPD en Flash-Lite contra 20 RPD en los modelos preview/experimentales que se probaron antes — la demo no puede depender de una cuota que se agota en la primera ronda de pruebas.
 Si falta tiempo: no se reevalúa el modelo salvo que Google lo descontinúe; cambiar de modelo es una sola variable de entorno.
+
+## D20 — Una sola conexión SSE activa por surfaceId
+
+El hub de `src/agent/stream.ts` cierra en el servidor la conexión SSE anterior de un `surfaceId` cuando llega una nueva, en vez de dejarlas coexistir.
+Razón: bug real en vivo — recargas repetidas del navegador dejaban `EventSource` huérfanos sin cerrar; Chrome limita a 6 conexiones concurrentes por origen en HTTP/1.1 (`next start` no sirve HTTP/2), agotando el pool y colgando conexiones nuevas para siempre aunque el servidor respondiera bien (confirmado con curl).
+Si falta tiempo: no se resuelve con HTTP/2 (requiere TLS/servidor custom); esta es la solución mínima consistente con "una sesión = una surfaceId" de A2UI.md sección 2.

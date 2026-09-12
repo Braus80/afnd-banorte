@@ -12,8 +12,9 @@ export async function GET(req: NextRequest) {
   const sesion = sesionParaSurface(surfaceId);
   const encoder = new TextEncoder();
 
-  let cerrar: () => void = () => {};
+  let desuscribir: () => void = () => {};
   let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let cerrada = false;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -28,9 +29,22 @@ export async function GET(req: NextRequest) {
       const enviar = (mensaje: unknown) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(mensaje)}\n\n`));
       };
+      // cerrarConexion: la llama el hub si llega una conexión nueva para
+      // este mismo surfaceId (D20) — termina esta respuesta del lado del
+      // servidor para que el navegador libere el slot de conexión.
+      const cerrarConexion = () => {
+        if (cerrada) return;
+        cerrada = true;
+        if (heartbeat) clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {
+          // ya cerrado por el cliente, no pasa nada
+        }
+      };
       // Se suscribe ANTES de iniciar sesión para no perder mensajes que el
       // agente produzca durante ese arranque.
-      cerrar = suscribir(surfaceId, enviar);
+      desuscribir = suscribir(surfaceId, enviar, cerrarConexion);
 
       iniciarSesionSiEsNueva(sesion).catch((e) => {
         console.error("error iniciando sesión:", e);
@@ -40,8 +54,9 @@ export async function GET(req: NextRequest) {
       });
     },
     cancel() {
+      cerrada = true;
       if (heartbeat) clearInterval(heartbeat);
-      cerrar();
+      desuscribir();
     },
   });
 
