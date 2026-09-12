@@ -6,6 +6,10 @@ import { useSyncExternalStore } from "react";
 // Renderer: es una affordance del shell, no un dato del agente. Una sola
 // lectura a la vez en toda la página; PixyBubble observa `reproduciendo`
 // para ponerse en "hablando".
+//
+// D23: modo de lectura continua. Se activa al tocar la bocina; mientras esté
+// activo, cada ExplanationCard que se monta (llega por updateComponents) se
+// lee sola vía `leerAutomatico`. Un fallo de /api/voz no apaga el modo.
 
 export type EstadoVoz = "inactivo" | "cargando" | "reproduciendo";
 
@@ -13,6 +17,9 @@ const MAX_CACHE = 50;
 
 let estado: EstadoVoz = "inactivo";
 let textoActivo: string | null = null;
+let modoContinuo = false;
+let cola: string[] = []; // tarjetas del mismo lote que esperan turno (D23)
+let lotePendiente: string[] | null = null; // montajes del mismo commit de React, aún sin despachar
 let audioActual: HTMLAudioElement | null = null;
 let abortActual: AbortController | null = null;
 const oyentes = new Set<() => void>();
@@ -25,6 +32,12 @@ function notificar() {
 function fijar(nuevo: EstadoVoz, texto: string | null) {
   estado = nuevo;
   textoActivo = texto;
+  notificar();
+}
+
+function fijarModo(activo: boolean) {
+  if (modoContinuo === activo) return;
+  modoContinuo = activo;
   notificar();
 }
 
@@ -46,8 +59,9 @@ function soltarAudio(audio: HTMLAudioElement) {
   audio.removeAttribute("src");
 }
 
-/** Detiene la lectura en curso (o cancela la descarga). Idempotente. */
-export function detener(): void {
+// Corta el audio o la descarga en curso sin tocar la cola: lo usa `leer`
+// para garantizar un solo audio a la vez.
+function detenerAudio() {
   abortActual?.abort();
   abortActual = null;
   if (audioActual) {
@@ -57,16 +71,32 @@ export function detener(): void {
   if (estado !== "inactivo") fijar("inactivo", null);
 }
 
+/** Detiene la lectura en curso (o cancela la descarga) y vacía la cola. Idempotente. */
+export function detener(): void {
+  cola = [];
+  lotePendiente = null;
+  detenerAudio();
+}
+
 /** Detiene solo si lo que suena es `texto` — para el unmount de una tarjeta. */
 export function detenerSi(texto: string): void {
   if (textoActivo === texto.trim()) detener();
+}
+
+function siguienteEnCola() {
+  if (!modoContinuo) {
+    cola = [];
+    return;
+  }
+  const siguiente = cola.shift();
+  if (siguiente) void leer(siguiente);
 }
 
 /** Pide el audio de `texto`, lo reproduce y actualiza el estado. Nunca lanza. */
 export async function leer(texto: string): Promise<void> {
   const clave = texto.trim();
   if (!clave) return;
-  detener();
+  detenerAudio();
 
   // El elemento se crea en el mismo tick del click: Safari solo deja
   // reproducir con sonido a un Audio nacido dentro del gesto del usuario.
@@ -77,6 +107,7 @@ export async function leer(texto: string): Promise<void> {
     soltarAudio(audio);
     audioActual = null;
     fijar("inactivo", null);
+    siguienteEnCola();
   };
   audio.onended = terminar;
   audio.onerror = terminar;
@@ -101,6 +132,8 @@ export async function leer(texto: string): Promise<void> {
       guardarEnCache(clave, url);
     } catch (e) {
       if (ctrl.signal.aborted) return; // cancelación explícita, ya está en inactivo
+      // D23: la tarjeta no suena, pero el modo continuo sigue activo y la
+      // cola avanza — el fallo es de esta lectura, no del modo.
       console.warn("voz no disponible, se vuelve a inactivo:", e);
       abortActual = null;
       terminar();
@@ -120,6 +153,43 @@ export async function leer(texto: string): Promise<void> {
   }
 }
 
+/** Toque de la bocina con el modo apagado: lee esta tarjeta y enciende el modo continuo. */
+export function activarLecturaContinua(texto: string): void {
+  fijarModo(true);
+  void leer(texto);
+}
+
+/** Toque de la bocina con el modo encendido: apaga el modo y detiene lo que suene. */
+export function desactivarLecturaContinua(): void {
+  fijarModo(false);
+  detener();
+}
+
+/**
+ * Lo llama ExplanationCard al montarse. Solo hace algo con el modo continuo
+ * activo. Los montajes de un mismo commit de React se juntan en un lote
+ * (microtask): un lote nuevo corta lo que sonaba, se lee su primera tarjeta
+ * y las demás esperan turno en la cola — un solo audio a la vez.
+ */
+export function leerAutomatico(texto: string): void {
+  if (!modoContinuo) return;
+  const clave = texto.trim();
+  if (!clave) return;
+  if (lotePendiente) {
+    if (!lotePendiente.includes(clave)) lotePendiente.push(clave);
+    return;
+  }
+  lotePendiente = [clave];
+  queueMicrotask(() => {
+    const lote = lotePendiente ?? [];
+    lotePendiente = null;
+    if (!modoContinuo || lote.length === 0) return;
+    detener();
+    cola = lote.slice(1);
+    void leer(lote[0]);
+  });
+}
+
 function suscribir(fn: () => void) {
   oyentes.add(fn);
   return () => {
@@ -129,24 +199,25 @@ function suscribir(fn: () => void) {
 
 // Snapshot primitivo (string) para que useSyncExternalStore compare por valor.
 function snapshot(): string {
-  return `${estado}|${textoActivo ?? ""}`;
+  return `${estado}|${modoContinuo ? "1" : "0"}|${textoActivo ?? ""}`;
 }
 
 function snapshotServidor(): string {
-  return "inactivo|";
+  return "inactivo|0|";
 }
 
-/** Estado de lectura de un texto concreto: "inactivo" si lo que suena es otro. */
-export function useVoz(texto: string): { estado: EstadoVoz; alternar: () => void } {
+/** Estado de lectura de un texto concreto ("inactivo" si lo que suena es otro) y del modo continuo. */
+export function useVoz(texto: string): { estado: EstadoVoz; continuo: boolean; alternar: () => void } {
   const snap = useSyncExternalStore(suscribir, snapshot, snapshotServidor);
   const clave = texto.trim();
-  const [estadoGlobal, activo] = snap.split("|") as [EstadoVoz, string];
-  const propio: EstadoVoz = activo === clave ? estadoGlobal : "inactivo";
+  const [estadoGlobal, modo, activo] = snap.split("|") as [EstadoVoz, "0" | "1", string];
+  const continuo = modo === "1";
   return {
-    estado: propio,
+    estado: activo === clave ? estadoGlobal : "inactivo",
+    continuo,
     alternar: () => {
-      if (propio === "inactivo") void leer(clave);
-      else detener();
+      if (continuo) desactivarLecturaContinua();
+      else activarLecturaContinua(clave);
     },
   };
 }
