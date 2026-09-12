@@ -19,6 +19,16 @@ const LANGUAGE_CODE = "es";
 // específico se agrega una voz de la Voice Library a la cuenta y se pone su
 // id en ELEVENLABS_VOICE_ID.
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "EXAVITQu4vr4xnSDxMaL";
+// Tono fijo entre tarjetas: stability alta para que no cambie de humor de
+// una lectura a otra, style 0 para que no interprete emoción según el texto
+// (asistente bancario, no narrador). Si sigue variando, subir stability a
+// 0.85; si suena robótico, bajarla a 0.65.
+const VOICE_SETTINGS = {
+  stability: 0.75,
+  similarity_boost: 0.75,
+  style: 0,
+  use_speaker_boost: true,
+} as const;
 const TIMEOUT_MS = 8_000;
 const MAX_CHARS = 2_000; // ExplanationCard: body ~400 + 4 bullets; esto es red de seguridad
 const MAX_CACHE = 200;
@@ -72,7 +82,12 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         Accept: "audio/mpeg",
       },
-      body: JSON.stringify({ text: texto, model_id: MODEL_ID, language_code: LANGUAGE_CODE }),
+      body: JSON.stringify({
+        text: texto,
+        model_id: MODEL_ID,
+        language_code: LANGUAGE_CODE,
+        voice_settings: VOICE_SETTINGS,
+      }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
