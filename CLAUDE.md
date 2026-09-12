@@ -49,7 +49,7 @@ dashboard de DigitalOcean:
 ```
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=<tu clave>
-GEMINI_MODEL=gemini-2.0-flash   # opcional, default ya es este
+GEMINI_MODEL=gemini-3.6-flash   # opcional, default ya es este
 ```
 
 ## Comandos

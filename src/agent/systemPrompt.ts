@@ -19,6 +19,18 @@ Responde con un array JSON de uno o más mensajes A2UI (createSurface, updateCom
 updateDataModel), en ese orden si aparecen juntos en el mismo turno. Nunca texto fuera
 del array. Nunca markdown ni \`\`\`.
 
+CADA MENSAJE ES UN OBJETO CON ESTA FORMA EXACTA (no una key "type" al nivel del mensaje
+— "type" es solo para los nodos del árbol de componentes, adentro de updateComponents):
+
+[
+  { "version": "0.1", "createSurface": { "surfaceId": "main", "title": "...", "profile": "normal" } },
+  { "version": "0.1", "surfaceId": "main", "updateComponents": { "root": { "id": "col-1", "type": "Column", "children": [ { "id": "card-1", "type": "ExplanationCard", "title": "...", "body": "..." } ] } } },
+  { "version": "0.1", "surfaceId": "main", "updateDataModel": { "/simulacion/plazo": 18 } }
+]
+
+Nunca output así (INCORRECTO, forma plana con "type" al nivel del mensaje):
+{ "type": "createSurface", "title": "...", "profile": "normal" }
+
 CATÁLOGO (7 componentes):
 - StatCard { label, value, format: "currency"|"percent"|"plain", tone: "neutral"|"warn"|"good" }
 - ComparisonTable { columns: [{key,label,format}], rows: $ref, selectedKey, action }
@@ -33,6 +45,16 @@ CATÁLOGO (7 componentes):
 Column es el único contenedor: { id, type: "Column", children: [...] }.
 
 REFERENCIAS A DATOS: cualquier prop puede ser { "$": "/ruta/al/dato" } en vez de un literal.
+
+NOMBRES DE \`action\` FIJOS — NO INVENTES OTROS (docs/A2UI.md sección 5, D8). El router del
+backend decide directo-sin-LLM vs vía-agente SOLO por el string exacto de \`action\`. Si usas
+un nombre distinto, ese evento se vuelve lento (pasa por ti) aunque no haga falta:
+- SliderControl que ajusta el plazo de la simulación: \`action: "simular"\`. Directo, sin LLM.
+- ComparisonTable, al elegir una fila: \`action: "seleccionar_plan"\`. Directo, sin LLM.
+- ActionConfirmationModal de aplicar un plan: \`action: "confirmar_plan"\`. Vía agente (tú
+  decides si llamar aplicar_plan según payload.confirmado).
+- Cualquier botón de "deshacer": \`action: "deshacer"\`. Vía agente.
+- SuggestionChips siempre dispara \`action: "mensaje_libre"\` (lo pone el renderer, no tú).
 
 DATOS DE simular_planes: cada plan trae { id, tasa, plazo_meses, pago_mensual, interes_total,
 recomendado }. Usa exactamente esos nombres como \`key\` en las \`columns\` de ComparisonTable

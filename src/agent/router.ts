@@ -118,7 +118,8 @@ function procesarSalidaAgente(sesion: SessionState, textoJson: string): void {
   }
 
   const mensajes = Array.isArray(parseado) ? parseado : [parseado];
-  for (const m of mensajes) {
+  for (const bruto of mensajes) {
+    const m = normalizarMensaje(bruto, sesion.surfaceId);
     if (!esMensajeA2UIValido(m)) {
       console.warn("tipo de mensaje A2UI desconocido, se ignora:", m);
       continue;
@@ -129,4 +130,36 @@ function procesarSalidaAgente(sesion: SessionState, textoJson: string): void {
     }
     emitir(sesion.surfaceId, mensaje);
   }
+}
+
+// Defensa contra deriva del LLM: a veces devuelve la forma plana
+// { type: "createSurface", ... } en vez de la anidada del contrato
+// ({ createSurface: {...} }). Se normaliza en vez de descartar en
+// silencio — el contrato real sigue siendo docs/A2UI.md, esto es
+// tolerancia de parseo, no un tipo de mensaje nuevo.
+function normalizarMensaje(bruto: unknown, surfaceIdSesion: string): unknown {
+  if (typeof bruto !== "object" || bruto === null) return bruto;
+  const obj = bruto as Record<string, unknown>;
+  if (typeof obj.type !== "string") return bruto;
+
+  const { type, version, surfaceId, ...resto } = obj;
+  const v = typeof version === "string" ? version : "0.1";
+  const sid = typeof surfaceId === "string" ? surfaceId : surfaceIdSesion;
+
+  if (type === "createSurface") {
+    console.warn("A2UI: normalizando createSurface plano del LLM a forma anidada");
+    return { version: v, createSurface: { surfaceId: sid, ...resto } };
+  }
+  if (type === "updateComponents") {
+    console.warn("A2UI: normalizando updateComponents plano del LLM a forma anidada");
+    const root =
+      resto.root ?? (Array.isArray(resto.components) ? { id: "root", type: "Column", children: resto.components } : undefined);
+    return { version: v, surfaceId: sid, updateComponents: { root } };
+  }
+  if (type === "updateDataModel") {
+    console.warn("A2UI: normalizando updateDataModel plano del LLM a forma anidada");
+    const { patch, ...datos } = resto;
+    return { version: v, surfaceId: sid, updateDataModel: (patch as Record<string, unknown>) ?? datos };
+  }
+  return bruto;
 }

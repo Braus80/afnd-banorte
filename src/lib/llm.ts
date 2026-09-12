@@ -20,6 +20,10 @@ export interface ToolDeclaration {
 export interface ToolCall {
   name: string;
   args: Record<string, unknown>;
+  // Modelos "thinking" (gemini-3.x) lo exigen al reenviar el functionCall
+  // en el siguiente turno — probado en vivo, sin esto el 400 dice
+  // "Function call is missing a thought_signature".
+  thoughtSignature?: string;
 }
 
 export interface ChatMessage {
@@ -38,10 +42,11 @@ interface GeminiPart {
   text?: string;
   functionCall?: { name: string; args?: Record<string, unknown> };
   functionResponse?: { name: string; response: { result: unknown } };
+  thoughtSignature?: string;
 }
 
 interface GeminiContent {
-  role: "user" | "model" | "function";
+  role: "user" | "model";
   parts: GeminiPart[];
 }
 
@@ -52,11 +57,22 @@ interface GeminiResponseBody {
 function toGeminiContents(messages: ChatMessage[]): GeminiContent[] {
   return messages.map((m): GeminiContent => {
     if (m.toolCall) {
-      return { role: "model", parts: [{ functionCall: { name: m.toolCall.name, args: m.toolCall.args } }] };
+      return {
+        role: "model",
+        parts: [
+          {
+            functionCall: { name: m.toolCall.name, args: m.toolCall.args },
+            ...(m.toolCall.thoughtSignature ? { thoughtSignature: m.toolCall.thoughtSignature } : {}),
+          },
+        ],
+      };
     }
     if (m.toolResult) {
+      // Este modelo no acepta role "function" ("Role 'function' is not
+      // supported", probado en vivo) — la respuesta de la tool va como
+      // "user" con una parte functionResponse.
       return {
-        role: "function",
+        role: "user",
         parts: [{ functionResponse: { name: m.toolResult.name, response: { result: m.toolResult.result } } }],
       };
     }
@@ -77,7 +93,7 @@ async function geminiChat(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY no configurada");
 
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+  const model = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const body = {
@@ -102,7 +118,11 @@ async function geminiChat(
 
   const toolCalls: ToolCall[] = parts
     .filter((p): p is GeminiPart & { functionCall: NonNullable<GeminiPart["functionCall"]> } => Boolean(p.functionCall))
-    .map((p) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} }));
+    .map((p) => ({
+      name: p.functionCall.name,
+      args: p.functionCall.args ?? {},
+      thoughtSignature: p.thoughtSignature,
+    }));
 
   const text = parts.find((p) => typeof p.text === "string")?.text;
 

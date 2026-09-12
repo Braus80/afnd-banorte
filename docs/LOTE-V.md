@@ -80,7 +80,7 @@ camino directo de camino LLM: manda el mismo evento siempre.
 
 Campo fijo en la parte inferior. Enter envía `action: "mensaje_libre"`
 con `payload: { texto }`. Se vacía al enviar. Mientras el agente
-responde, se deshabilita y muestra "Pixi está pensando…".
+responde, se deshabilita y muestra "Pixy está pensando…".
 
 ### Perfil y tokens
 
@@ -106,13 +106,13 @@ Banorte en ningún componente.**
 
 ---
 
-## 6. Primera sesión (Pixi)
+## 6. Primera sesión (Pixy)
 
 Si la sesión no tiene perfil, el agente emite:
 
 1. `createSurface` con `profile: { modo: "normal", escala: 1, contraste: "estandar" }`.
 2. `updateComponents` con:
-   - `ExplanationCard` de bienvenida, firmada como Pixi, tono cálido,
+   - `ExplanationCard` de bienvenida, firmada como Pixy, tono cálido,
      que explica en dos frases qué puede hacer.
    - `SuggestionChips` con tres opciones: "Letras grandes y sencillo",
      "Normal", "Detallado". Cada `prompt` es literal, p. ej.
