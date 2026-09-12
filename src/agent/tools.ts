@@ -5,6 +5,7 @@ import {
   aplicar_plan,
   deshacer_plan,
   guardar_perfil,
+  obtener_movimientos,
   obtenerCatalogoPlanes,
   obtenerUsuarioId,
   obtenerCuentaId,
@@ -43,6 +44,12 @@ export const TOOL_DECLARATIONS: ToolDeclaration[] = [
     parameters: { type: "object", properties: {} },
   },
   {
+    name: "obtener_movimientos",
+    description:
+      "Movimientos del último mes del usuario agrupados por categoría de gasto (total, porcentaje y detalle), ordenados de mayor a menor, más el total del mes. Úsala cuando el usuario pregunte en qué se le va el dinero, en qué gasta o pida ver sus gastos o movimientos (D24).",
+    parameters: { type: "object", properties: {} },
+  },
+  {
     name: "guardar_perfil",
     description: "Guarda el perfil de accesibilidad que eligió el usuario.",
     parameters: {
@@ -73,6 +80,9 @@ export async function ejecutarTool(name: string, args: Record<string, unknown>):
 
     case "deshacer_plan":
       return deshacer_plan(usuarioId, cuentaId);
+
+    case "obtener_movimientos":
+      return obtener_movimientos(usuarioId);
 
     case "guardar_perfil":
       return guardar_perfil(usuarioId, args.perfil as Perfil);
