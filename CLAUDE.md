@@ -21,7 +21,8 @@ LLM + MCP + A2UI. Caso: reestructuración de deuda de tarjeta de crédito.
 
 ```
 ├── src/
-│   ├── mcp/mock.ts       # tools falsas (L2 real las reemplaza, misma firma)
+│   ├── mcp/mock.ts       # contrato de firmas + tools falsas de respaldo
+│   ├── mcp/tiger.ts      # tools reales sobre PostgreSQL (DATABASE_URL, D25)
 │   ├── lib/
 │   │   ├── llm.ts        # chat(messages, tools) — proveedor por LLM_PROVIDER
 │   │   └── a2ui.ts       # tipos del contrato docs/A2UI.md
@@ -38,8 +39,9 @@ LLM + MCP + A2UI. Caso: reestructuración de deuda de tarjeta de crédito.
 └── migrations/           # SQL sin aplicar, para cuando exista Tiger Data (L2)
 ```
 
-Pendiente: front (store/resolvedor/renderer de los 7 componentes — Lote V
-punto 5), servidor MCP real y Tiger Data (L2).
+Tools: `src/mcp/tiger.ts` (PostgreSQL en Tiger Cloud, D25) es lo que cargan
+agente y router; `src/mcp/mock.ts` sigue siendo el contrato de firmas y el
+respaldo si no hay base.
 
 ### Variables de entorno
 
@@ -53,6 +55,7 @@ GEMINI_API_KEY=<tu clave>
 GEMINI_MODEL=gemini-3.6-flash   # opcional, default ya es este
 ELEVENLABS_API_KEY=<tu clave>   # voz de Pixy (D21); sin ella /api/voz responde 503 y el botón no hace nada
 ELEVENLABS_VOICE_ID=<voice id>  # opcional, para una voz en español latino de la Voice Library
+DATABASE_URL=<cadena de Tiger Cloud>  # tools reales (D25); sin ella el servidor no arranca las rutas del agente
 ```
 
 ## Comandos
@@ -77,8 +80,9 @@ Setup inicial (una vez, manual en el dashboard de DigitalOcean o con `doctl`):
    `npm start`. Puerto: variable `$PORT` que inyecta DO (ya usado en el script
    `start`).
 4. Variables de entorno a configurar en el dashboard (no van al repo):
-   `LLM_PROVIDER`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `TIGER_DATA_URL`
-   (se agregan cuando existan los lotes que los usan).
+   `LLM_PROVIDER`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `DATABASE_URL`
+   (`DATABASE_URL` debe existir también en build: Next importa las rutas al
+   compilar y `src/mcp/tiger.ts` lanza si falta, D25).
 
 ## URL viva
 

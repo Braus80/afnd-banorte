@@ -7,7 +7,7 @@ import { TOOL_DECLARATIONS, ejecutarTool } from "@/src/agent/tools";
 import { SYSTEM_PROMPT } from "@/src/agent/systemPrompt";
 import { obtenerOCrearSesion, actualizarDataModel, type SessionState } from "@/src/agent/session";
 import { emitir } from "@/src/agent/stream";
-import { simular_planes, obtener_diagnostico, obtenerCatalogoPlanes, obtenerUsuarioId } from "@/src/mcp/mock";
+import { simular_planes, obtener_diagnostico, obtenerCatalogoPlanes, obtenerUsuarioId } from "@/src/mcp/tiger";
 import { esMensajeA2UIValido, type A2UIMessage, type EventoFront } from "@/src/lib/a2ui";
 import type { Perfil } from "@/src/mcp/mock";
 
