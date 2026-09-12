@@ -30,6 +30,16 @@ export const TOOL_DECLARATIONS: ToolDeclaration[] = [
     },
   },
   {
+    name: "seleccionar_plan",
+    description:
+      "Marca como elegido un plan del comparador (mismo efecto que el clic en su fila): llena /simulacion/selectedKey, /simulacion/plazo, /simulacion/pagoMensual e /simulacion/interesTotal en el data model. Llámala cuando el usuario elija un plan por texto ('quiero el plan C') antes de mostrar el ActionConfirmationModal.",
+    parameters: {
+      type: "object",
+      properties: { plan_id: { type: "string", description: "id del plan (plan-a, plan-b, plan-c)." } },
+      required: ["plan_id"],
+    },
+  },
+  {
     name: "aplicar_plan",
     description: "Aplica el plan elegido a la cuenta del usuario.",
     parameters: {
@@ -74,6 +84,11 @@ export async function ejecutarTool(name: string, args: Record<string, unknown>):
       const planes = obtenerCatalogoPlanes().map((p) => ({ id: p.id, plazoMeses }));
       return simular_planes(saldo, planes);
     }
+
+    case "seleccionar_plan":
+      // Necesita el data model de la sesión: la resuelve el router antes de
+      // llegar aquí (correrTurnoAgente). Si llega, es un bug de cableado.
+      throw new Error("seleccionar_plan se resuelve en el router, no en ejecutarTool");
 
     case "aplicar_plan":
       return aplicar_plan(usuarioId, cuentaId, String(args.plan_id));

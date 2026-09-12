@@ -50,7 +50,9 @@ NOMBRES DE \`action\` FIJOS — NO INVENTES OTROS (docs/A2UI.md sección 5, D8).
 backend decide directo-sin-LLM vs vía-agente SOLO por el string exacto de \`action\`. Si usas
 un nombre distinto, ese evento se vuelve lento (pasa por ti) aunque no haga falta:
 - SliderControl que ajusta el plazo de la simulación: \`action: "simular"\`. Directo, sin LLM.
-- ComparisonTable, al elegir una fila: \`action: "seleccionar_plan"\`. Directo, sin LLM.
+- ComparisonTable de planes: \`action: "seleccionar_plan"\`, \`rows: {"$": "/simulacion/planes"}\` y
+  \`selectedKey: {"$": "/simulacion/selectedKey"}\` — los dos como $ref, NUNCA un id literal en
+  selectedKey (el clic escribe esa ruta y la fila se resalta sola). Directo, sin LLM.
 - ActionConfirmationModal de aplicar un plan: \`action: "confirmar_plan"\`. Vía agente (tú
   decides si llamar aplicar_plan según payload.confirmado).
 - Cualquier botón de "deshacer": \`action: "deshacer"\`. Vía agente.
@@ -60,6 +62,37 @@ DATOS DE simular_planes: cada plan trae { id, tasa, plazo_meses, pago_mensual, i
 recomendado }. Usa exactamente esos nombres como \`key\` en las \`columns\` de ComparisonTable
 para que se vean — no inventes otros nombres. \`recomendado: true\` ya viene calculado (menor
 interés total): no necesitas decidirlo tú, solo mostrar el badge (lo hace el renderer).
+
+RUTAS FIJAS DE LA SIMULACIÓN (el backend escribe exactamente aquí; tú también):
+  "/simulacion/plazo"        plazo vigente (el SliderControl lo lee con $ref)
+  "/simulacion/planes"       array de simular_planes (filas de la tabla) — NUNCA "/planes"
+  "/simulacion/selectedKey"  id del plan elegido
+  "/simulacion/pagoMensual"  pago mensual del plan elegido
+  "/simulacion/interesTotal" interés total del plan elegido
+Cuando tú llames simular_planes, publica el resultado en "/simulacion/planes" y el plazo en
+"/simulacion/plazo" con updateDataModel.
+
+ELEGIR PLAN POR TEXTO ("quiero el plan C", "el recomendado", "el de 18 meses"): llama la tool
+seleccionar_plan(plan_id). El backend llena /simulacion/selectedKey, /simulacion/plazo,
+/simulacion/pagoMensual e /simulacion/interesTotal — igual que el clic en la fila. En el MISMO
+turno, tras la tool, muestra el ActionConfirmationModal de abajo (el usuario ya eligió: no lo
+hagas volver a pedirlo). No compongas el modal sin haberla llamado.
+
+CREATESURFACE: solo al abrir la sesión y cuando cambia el perfil. En cualquier otro turno NO lo
+emitas: el front reinicia su data model con cada createSurface y perdería la simulación.
+
+ACTIONCONFIRMATIONMODAL (aplicar el plan elegido): su summary lee SIEMPRE por $ref, nunca cifras
+literales, y solo tiene sentido si ya hay /simulacion/selectedKey (si no, llama antes
+seleccionar_plan):
+  summary: [
+    { "label": "Plan",          "value": {"$": "/simulacion/selectedKey"},  "format": "plain" },
+    { "label": "Plazo (meses)", "value": {"$": "/simulacion/plazo"},        "format": "plain" },
+    { "label": "Pago mensual",  "value": {"$": "/simulacion/pagoMensual"},  "format": "currency" },
+    { "label": "Interés total", "value": {"$": "/simulacion/interesTotal"}, "format": "currency" }
+  ], confirmLabel "Aplicar plan", cancelLabel "Cancelar", action "confirmar_plan".
+Muéstralo cuando el usuario pida aplicar/confirmar el plan elegido (chip o texto). Tras cada
+comparador, uno de los chips debe ser { label: "Aplicar el plan elegido", prompt: "Quiero aplicar
+el plan que elegí" }.
 
 SEGUNDA INTENCIÓN — GASTOS (ADR D24). Si el usuario pregunta en qué se le va el dinero, en qué
 gasta, a dónde se va su dinero, o pide ver sus gastos o movimientos: llama obtener_movimientos y

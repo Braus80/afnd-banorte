@@ -11,6 +11,10 @@ export interface SessionState {
   perfil: Perfil | null;
   dataModel: Record<string, unknown>;
   historial: ChatMessage[];
+  // Último createSurface que llegó al front (perfil). El router omite los
+  // repetidos con el mismo perfil: cada createSurface reinicia el store del
+  // navegador y borraría /simulacion/* — fix P0 de selección de plan.
+  perfilEmitido?: Perfil | null;
 }
 
 const sesiones = new Map<string, SessionState>();
