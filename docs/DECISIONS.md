@@ -50,6 +50,12 @@ Los eventos `simular` y `seleccionar_plan` llaman la tool MCP directo y responde
 Razón: latencia de milisegundos en la interacción más frecuente del demo (mover el slider) — pasar por el LLM ahí se siente lento y es innecesario porque no hay decisión que tomar.
 Si falta tiempo: se corta cualquier otro atajo directo nuevo; esta distinción de dos caminos no se toca porque es la que hace sentir rápido al demo.
 
+## D10 — deshacer revierte solo el último plan aplicado
+
+`deshacer_plan` en `src/mcp/mock.ts` guarda un solo `planAplicado` por cuenta (no una pila de historial): deshacer siempre vuelve a "sin plan", nunca a un plan anterior a ese.
+Razón: el flujo del demo (A2UI.md sección 6) solo pide revertir el paso inmediato anterior; una pila de historial es complejidad que nadie usa en 48 h.
+Si falta tiempo: no se agrega historial multi-nivel; L2 real puede hacerlo si el caso de uso lo pide después.
+
 ## D12 — Perfil de accesibilidad
 
 `profile` es un campo de `createSurface` con tres valores cerrados (`sencillo`, `normal`, `detallado`); el renderer aplica escala, contraste y densidad — no hay componentes distintos por perfil.
