@@ -19,6 +19,10 @@ export function AppRenderer() {
   const [conectado, setConectado] = useState(false);
   const [pensando, setPensando] = useState(false);
   const reintentoRef = useRef(1000);
+  // Espejos del estado para decidir dentro del handler del EventSource sin
+  // depender de closures viejos.
+  const rootRef = useRef<ComponentNode | null>(null);
+  const perfilRef = useRef<Profile>("normal");
 
   useEffect(() => {
     let es: EventSource | null = null;
@@ -27,13 +31,23 @@ export function AppRenderer() {
     function manejarMensaje(m: A2UIMessage) {
       setPensando(false);
       if ("createSurface" in m) {
-        store.reset();
+        const perfilNuevo = m.createSurface.profile ?? "normal";
         setTitle(m.createSurface.title);
-        setProfile(m.createSurface.profile ?? "normal");
+        // D28: una reconexión rehidrata con createSurface del MISMO perfil
+        // seguido del data model completo y el árbol vigente. Si ya hay
+        // pantalla montada, no se desmonta ni se vacía el store: React
+        // reconcilia por id, no hay destello de "Cargando…" ni reinicio de
+        // la lectura en voz. Perfil distinto = superficie nueva de verdad.
+        if (perfilNuevo === perfilRef.current && rootRef.current) return;
+        perfilRef.current = perfilNuevo;
+        store.reset();
+        setProfile(perfilNuevo);
         setRoot(null);
+        rootRef.current = null;
         return;
       }
       if ("updateComponents" in m) {
+        rootRef.current = m.updateComponents.root;
         setRoot(m.updateComponents.root);
         return;
       }

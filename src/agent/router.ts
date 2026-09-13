@@ -7,6 +7,7 @@ import { TOOL_DECLARATIONS, ejecutarTool } from "@/src/agent/tools";
 import { SYSTEM_PROMPT } from "@/src/agent/systemPrompt";
 import { obtenerOCrearSesion, actualizarDataModel, type SessionState } from "@/src/agent/session";
 import { emitir } from "@/src/agent/stream";
+import { mensajesBienvenida, PROMPT_INICIO_SESION, TITULO_SURFACE } from "@/src/agent/bienvenida";
 import { simular_planes, obtener_diagnostico, obtenerCatalogoPlanes, obtenerUsuarioId } from "@/src/mcp/tiger";
 import type { PlanSimulado } from "@/src/mcp/tiger";
 import { esMensajeA2UIValido, type A2UIMessage, type ComponentNode, type EventoFront } from "@/src/lib/a2ui";
@@ -29,13 +30,52 @@ export function sesionParaSurface(surfaceId: string): SessionState {
   return obtenerOCrearSesion(surfaceId, obtenerUsuarioId());
 }
 
+// Lo llama /api/stream con cada conexión SSE nueva (D28):
+// - sesión nueva (sin historial, sin perfil, sin pantalla): bienvenida
+//   determinista al instante, sin LLM, sembrada en el historial como si el
+//   agente la hubiera dicho — así "hola" o elegir un perfil siguen con
+//   contexto y no se re-saluda de cero.
+// - sesión existente (recarga a mitad del flujo, reconexión D20): se
+//   rehidrata lo que había — createSurface con el perfil vigente, el data
+//   model completo y el último árbol. Nunca se vuelve a la bienvenida.
+// Todo es síncrono antes del primer await, así que dos conexiones
+// simultáneas sobre una sesión nueva no duplican la bienvenida: la segunda
+// ya encuentra historial y rehidrata.
 export async function iniciarSesionSiEsNueva(sesion: SessionState): Promise<void> {
-  if (sesion.perfil !== null || sesion.historial.length > 0) return;
-  sesion.historial.push({
-    role: "user",
-    text: "Inicia la sesión: preséntate como Pixy con una bienvenida cálida y ofrece elegir el perfil de accesibilidad.",
-  });
-  await correrTurnoAgente(sesion);
+  const esNueva = sesion.perfil === null && sesion.historial.length === 0 && !sesion.ultimoRoot;
+  if (!esNueva) {
+    rehidratar(sesion);
+    return;
+  }
+  const mensajes = mensajesBienvenida(sesion.surfaceId);
+  sesion.historial.push({ role: "user", text: PROMPT_INICIO_SESION });
+  // Con sangría: el modelo imita el estilo de sus turnos previos y el JSON
+  // compacto le hace desbalancear llaves (visto en vivo, 4/4 turnos).
+  sesion.historial.push({ role: "model", text: JSON.stringify(mensajes, null, 2) });
+  sesion.perfilEmitido = "normal";
+  for (const m of mensajes) emitirEnSesion(sesion, m);
+}
+
+function rehidratar(sesion: SessionState): void {
+  const perfil = sesion.perfilEmitido ?? sesion.perfil ?? "normal";
+  sesion.perfilEmitido = perfil;
+  emitirEnSesion(sesion, { version: "0.1", createSurface: { surfaceId: sesion.surfaceId, title: TITULO_SURFACE, profile: perfil } });
+  if (Object.keys(sesion.dataModel).length > 0) {
+    emitirEnSesion(sesion, { version: "0.1", surfaceId: sesion.surfaceId, updateDataModel: { ...sesion.dataModel } });
+  }
+  // Con un turno del agente en vuelo no se reenvía el árbol viejo: podría
+  // traer un modal ya accionado. El turno publicará su pantalla por esta
+  // conexión nueva; hasta entonces el front muestra "Cargando…".
+  if (sesion.ultimoRoot && !sesion.turnoEnCurso) {
+    emitirEnSesion(sesion, { version: "0.1", surfaceId: sesion.surfaceId, updateComponents: { root: sesion.ultimoRoot } });
+  }
+}
+
+// Único punto de salida hacia el front: recuerda el último árbol para poder
+// rehidratar una recarga (D28).
+function emitirEnSesion(sesion: SessionState, mensaje: A2UIMessage): void {
+  if ("updateComponents" in mensaje) sesion.ultimoRoot = mensaje.updateComponents.root;
+  emitir(sesion.surfaceId, mensaje);
 }
 
 export async function manejarEvento(evento: EventoFront): Promise<void> {
@@ -73,7 +113,7 @@ async function manejarDirecto(sesion: SessionState, evento: EventoFront): Promis
     const seleccionado = resultado.find((p) => p.id === sesion.dataModel[RUTA_SELECCION]);
     if (seleccionado) Object.assign(parcial, cifrasDePlan(seleccionado));
     actualizarDataModel(sesion, parcial);
-    emitir(sesion.surfaceId, { version: "0.1", surfaceId: sesion.surfaceId, updateDataModel: parcial });
+    emitirEnSesion(sesion, { version: "0.1", surfaceId: sesion.surfaceId, updateDataModel: parcial });
     return;
   }
 
@@ -122,7 +162,7 @@ async function seleccionarPlan(sesion: SessionState, planId: string): Promise<Re
   parcial[RUTA_SELECCION] = planId;
   Object.assign(parcial, cifrasDePlan(plan));
   actualizarDataModel(sesion, parcial);
-  emitir(sesion.surfaceId, { version: "0.1", surfaceId: sesion.surfaceId, updateDataModel: parcial });
+  emitirEnSesion(sesion, { version: "0.1", surfaceId: sesion.surfaceId, updateDataModel: parcial });
   return parcial;
 }
 
@@ -150,6 +190,16 @@ function construirTextoDesdeEvento(sesion: SessionState, evento: EventoFront): s
 }
 
 async function correrTurnoAgente(sesion: SessionState): Promise<void> {
+  sesion.turnoEnCurso = true;
+  try {
+    await correrTurnoAgenteInterno(sesion);
+  } finally {
+    sesion.turnoEnCurso = false;
+  }
+}
+
+async function correrTurnoAgenteInterno(sesion: SessionState): Promise<void> {
+  let reintentoJson = false;
   for (let i = 0; i < MAX_TURNOS_TOOL_CALLING; i++) {
     let respuesta;
     try {
@@ -182,11 +232,56 @@ async function correrTurnoAgente(sesion: SessionState): Promise<void> {
 
     if (respuesta.text) {
       sesion.historial.push({ role: "model", text: respuesta.text });
-      procesarSalidaAgente(sesion, respuesta.text);
+      const ok = procesarSalidaAgente(sesion, respuesta.text);
+      if (!ok && !reintentoJson) {
+        // Visto en vivo: un "]" de más, o un prefijo "data:" al estilo SSE.
+        // Un solo reintento con la corrección explícita; si vuelve a fallar,
+        // tarjeta de respaldo — nunca dejar el front en "pensando".
+        reintentoJson = true;
+        sesion.historial.push({
+          role: "user",
+          text:
+            "Tu última respuesta no fue JSON válido y se descartó. Reemite exactamente el mismo contenido como un array JSON válido de mensajes A2UI, con sangría de 2 espacios, sin texto ni prefijos alrededor (nada de \"data:\", nada de ```), revisando que cada { y [ tenga su cierre.",
+        });
+        continue;
+      }
+      if (!ok) emitirTrabado(sesion);
     }
     return;
   }
+  emitirTrabado(sesion);
   throw new Error("el agente no resolvió dentro del máximo de turnos de tool-calling");
+}
+
+// Respaldo cuando el agente no logra producir una pantalla válida: el front
+// recibe algo (sale de "pensando") y el usuario puede pedir que lo repita.
+function emitirTrabado(sesion: SessionState): void {
+  emitir(sesion.surfaceId, {
+    version: "0.1",
+    surfaceId: sesion.surfaceId,
+    updateComponents: {
+      root: {
+        id: "col-trabado",
+        type: "Column",
+        children: [
+          {
+            id: "card-trabado",
+            type: "ExplanationCard",
+            title: "Se me trabó la pantalla",
+            body: "No pude armar bien la respuesta. Pídeme que lo intente de nuevo o elige una opción.",
+          },
+          {
+            id: "chips-trabado",
+            type: "SuggestionChips",
+            items: [
+              { label: "Intentar de nuevo", prompt: "Repite tu última respuesta" },
+              { label: "¿Cuánto debo?", prompt: "¿Cuánto debo?" },
+            ],
+          },
+        ],
+      },
+    },
+  });
 }
 
 async function seleccionarPlanDesdeAgente(sesion: SessionState, planId: string): Promise<unknown> {
@@ -204,6 +299,9 @@ async function seleccionarPlanDesdeAgente(sesion: SessionState, planId: string):
   };
 }
 
+// Aviso transitorio: se emite directo, sin tocar ultimoRoot, para que una
+// recarga restaure la última pantalla real (sus controles directos siguen
+// sirviendo aunque el LLM esté agotado).
 function emitirDescanso(sesion: SessionState): void {
   emitir(sesion.surfaceId, {
     version: "0.1",
@@ -219,14 +317,19 @@ function emitirDescanso(sesion: SessionState): void {
   });
 }
 
-function procesarSalidaAgente(sesion: SessionState, textoJson: string): void {
+// Devuelve false si la salida no era JSON parseable (el llamador decide si reintenta).
+function procesarSalidaAgente(sesion: SessionState, textoJson: string): boolean {
   let parseado: unknown;
   try {
-    const limpio = textoJson.trim().replace(/^```json\s*|```\s*$/g, "");
+    const limpio = textoJson
+      .trim()
+      .replace(/^```(?:json)?\s*|```\s*$/g, "")
+      .replace(/^data:\s*/i, "") // el LLM a veces imita el marco SSE
+      .trim();
     parseado = JSON.parse(limpio);
   } catch (e) {
     console.error("salida del agente no es JSON válido, se ignora:", textoJson, e);
-    return;
+    return false;
   }
 
   const mensajes = Array.isArray(parseado) ? parseado : [parseado];
@@ -251,9 +354,9 @@ function procesarSalidaAgente(sesion: SessionState, textoJson: string): void {
         continue;
       }
       sesion.perfilEmitido = perfilNuevo;
-      emitir(sesion.surfaceId, mensaje);
+      emitirEnSesion(sesion, mensaje);
       if (Object.keys(sesion.dataModel).length > 0) {
-        emitir(sesion.surfaceId, { version: "0.1", surfaceId: sesion.surfaceId, updateDataModel: { ...sesion.dataModel } });
+        emitirEnSesion(sesion, { version: "0.1", surfaceId: sesion.surfaceId, updateDataModel: { ...sesion.dataModel } });
       }
       continue;
     }
@@ -267,8 +370,9 @@ function procesarSalidaAgente(sesion: SessionState, textoJson: string): void {
       }
       actualizarDataModel(sesion, mensaje.updateDataModel);
     }
-    emitir(sesion.surfaceId, mensaje);
+    emitirEnSesion(sesion, mensaje);
   }
+  return true;
 }
 
 // Defensa contra deriva del LLM en la tabla de planes: el camino directo
