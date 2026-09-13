@@ -404,15 +404,21 @@
 /* Barra de porcentaje (D29) — solo en celdas con format "percent" y valor numérico */
 
 .a2ui-percent {
-  display: inline-flex;
+  display: flex; /* la pista llena la celda; sin min-width para no ensanchar la columna */
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
-  min-width: 4.5em;
+  min-width: 0;
 }
 
 .a2ui-percent-texto {
   white-space: nowrap; /* "20.75 %" en una línea aunque la columna sea angosta */
+}
+
+/* Las celdas se alinean por línea base: el número del porcentaje queda a
+   nivel de las celdas vecinas y la barra cuelga debajo. */
+.a2ui-comparison td {
+  vertical-align: baseline;
 }
 
 .a2ui-barra {
@@ -432,6 +438,7 @@
 }
 
 .a2ui-comparison td:first-child .a2ui-percent {
+  display: inline-flex; /* convive con el badge "Recomendado" en línea */
   align-items: flex-start;
 }
 
