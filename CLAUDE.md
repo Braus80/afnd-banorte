@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Hackathon Banorte x Tec. Agente que genera interfaces en tiempo real sobre
+Reto Banorte en HackMTY 2026. Agente que genera interfaces en tiempo real sobre
 LLM + MCP + A2UI. Caso: reestructuración de deuda de tarjeta de crédito.
 
 ## Estructura del repo
