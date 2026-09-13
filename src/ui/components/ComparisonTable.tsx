@@ -27,6 +27,22 @@ function formatearCelda(valor: unknown, format?: string): string {
   return String(valor);
 }
 
+// Celda "percent" con valor numérico: el número más una barra proporcional
+// (solo presentación, D29). Valor no numérico o ausente: solo el texto.
+function Celda({ valor, format }: { valor: unknown; format?: string }) {
+  const texto = formatearCelda(valor, format);
+  if (format !== "percent" || typeof valor !== "number" || !Number.isFinite(valor)) return <>{texto}</>;
+  const ancho = Math.min(100, Math.max(0, valor));
+  return (
+    <span className="a2ui-percent">
+      <span className="a2ui-percent-texto">{texto}</span>
+      <span className="a2ui-barra" aria-hidden="true">
+        <span className="a2ui-barra-relleno" style={{ width: `${ancho}%` }} />
+      </span>
+    </span>
+  );
+}
+
 export function ComparisonTable({ node, onEvento }: A2UIComponentProps) {
   console.debug("render", node.id);
   const { columns, rows, selectedKey, action } = useA2UINode(node) as {
@@ -70,7 +86,7 @@ export function ComparisonTable({ node, onEvento }: A2UIComponentProps) {
               >
                 {cols.map((c, ci) => (
                   <td key={c.key}>
-                    {formatearCelda(fila[c.key], c.format)}
+                    <Celda valor={fila[c.key]} format={c.format} />
                     {ci === 0 && fila.recomendado ? <span className="a2ui-badge">Recomendado</span> : null}
                   </td>
                 ))}
