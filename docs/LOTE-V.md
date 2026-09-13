@@ -102,7 +102,8 @@ Etiquetas de sección en gris. Montos alineados a la derecha con "MN".
 Números enmascarados con puntos (`•••• 4321`). Botón primario gris
 oscuro de ancho completo. Chips como iconos circulares con etiqueta
 debajo. Tipografía Montserrat (Google Fonts). **Sin logo ni nombre de
-Banorte en ningún componente.**
+Banorte en ningún componente** — regla sustituida por ADR D26: el logo
+oficial va en el header (solo ahí); los componentes siguen sin marca.
 
 ---
 

@@ -106,8 +106,15 @@ export function AppRenderer() {
   return (
     <div data-profile={profile} className="a2ui-root">
       <header className="a2ui-header">
-        <span className="a2ui-header-saludo">Buen día, Sofía</span>
-        <span className="a2ui-header-tarjeta">•••• 4321</span>
+        <div className="a2ui-header-marca">
+          {/* D26: logo oficial, blanco sobre el rojo. */}
+          <img className="a2ui-header-logo" src="/logo-banorte.svg" alt="Banorte" />
+          <span className="a2ui-header-separador" aria-hidden="true" />
+          <span className="a2ui-header-saludo">Buen día, Sofía</span>
+        </div>
+        <div className="a2ui-header-info">
+          <span className="a2ui-header-tarjeta">•••• 4321</span>
+        </div>
       </header>
 
       {!conectado && <div className="a2ui-aviso">Reconectando…</div>}

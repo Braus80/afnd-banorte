@@ -139,6 +139,18 @@ Razón: reemplazar el mock sin tocar agente ni router era la promesa de D1/D13 (
 Limitación conocida: el slider (`simular` directo en `router.ts`) sigue actualizando la memoria del mock, no la de `tiger.ts`; `aplicar_plan` usa el plazo de la última `simular_planes` que el agente llamó vía tools, y si no hubo, el `plazo_meses` del plan en `planes_credito`. Cambiar también el import del router (una línea) cierra esa brecha.
 Si falta tiempo: se abandona la rama y el demo queda con mocks; `DATABASE_URL` sin definir en build también rompe `next build` (el módulo lanza al cargar y Next lo importa al recolectar rutas), así que la variable debe existir en build y run en DigitalOcean.
 
+## D26 — Logo de Banorte en el header
+
+`public/logo-banorte.svg` (el logo oficial recoloreado a blanco) va en el header rojo, a la izquierda del saludo, a 26 px de alto (30 px en sencillo). Sustituye la regla de LOTE-V.md sección 5 "sin logo ni nombre de Banorte en ningún componente": el logo vive solo en el header, que es shell; los siete componentes del catálogo siguen sin marca.
+Razón: es el reto oficial de Banorte y el logo en el demo es apropiado; la regla original protegía de que la marca se colara dentro de componentes generados por el LLM, y eso se mantiene.
+Si falta tiempo: se deja el `<img>` tal cual; no se agrega favicon ni variantes.
+
+## D27 — Glassmorfismo por tokens, con excepción total en el perfil sencillo
+
+Tarjetas (`.a2ui-card`: ExplanationCard, StatCard, tablas, listas, modal), iconos de chips y barra de entrada usan `--card-bg` y `--card-blur`, que en normal/detallado resuelven a `--glass-bg` (blanco 0.70), `--glass-blur` (12 px) y borde `--glass-border` (blanco 0.55), con manchas difusas rojo/gris fijas detrás del contenido para que el vidrio se note; el header rojo queda sólido. El vidrio se activa solo dentro de `@supports (backdrop-filter)`; sin soporte la tarjeta cae a blanco 0.92, nunca a transparente. En `data-profile="sencillo"` no hay vidrio ni manchas: blanco sólido, borde de 2 px y contraste como hoy. `prefers-reduced-transparency: reduce` apaga el vidrio en cualquier perfil. `--label` pasa de #8a8a8a a #6e6e6e (4.9:1 sobre blanco) para que las etiquetas cumplan AA sobre el vidrio.
+Razón: la identidad visual gana profundidad sin tocar layout ni componentes (D17: todo por variables CSS); la accesibilidad es el corazón del caso y el perfil sencillo no puede perder contraste por estética.
+Si falta tiempo: el vidrio se limita al header y las tarjetas principales; chips y barra de entrada vuelven a `var(--card)`.
+
 ## D28 — Bienvenida determinista al conectar y rehidratación en cualquier reconexión
 
 Al registrarse una conexión SSE para un `surfaceId` sin sesión previa, el router emite al instante la bienvenida fija de `src/agent/bienvenida.ts` (`createSurface` normal + `ExplanationCard` de Pixy + los tres chips de perfil, el "Paso 1" que ya exigía el prompt) y la siembra en el historial como turno del modelo. Si la sesión ya existe (recarga a mitad del flujo, reconexión D20), no hay bienvenida: se re-emite `createSurface` con el perfil vigente, el data model completo y el último `updateComponents` que se guardó en `sesion.ultimoRoot`. Todas las emisiones del router pasan por `emitirEnSesion`, que es quien recuerda ese árbol.
